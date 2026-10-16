@@ -89,3 +89,15 @@ requires a compiler, make and Python. Temporary packages allowed that test to
 continue; Whiffletree subsequently added those tools to its pinned Nix image.
 A test using that fresh image is required before treating worker setup as complete.
 Rendered desktop behavior and other platforms are not established by this run.
+
+The final fresh-image run passed with image
+`7876a897e9e4acd8e638e11ba03aadd3262998d4e6854b13d94686152e2e88dd` and
+pinned Nix make/gcc/Python, without manual packages. Whiffletree's workspace SSH
+template additionally needed `Subsystem sftp internal-sftp` for Orca's guest CLI
+upload; after that fix, guest `orca status --json` reached the central runtime.
+All three agent version checks passed, an identical request returned the same
+VM, and the same terminal advanced from heartbeat 1 to 6 between disconnected
+control sessions. Destroy succeeded and removed its SSH target. The initial
+worker also passed suspend/resume and destroy. All four staging runtime records
+are cleaned; staging is stopped and production Orca is unchanged. No model
+authentication or rendered desktop acceptance is claimed.
