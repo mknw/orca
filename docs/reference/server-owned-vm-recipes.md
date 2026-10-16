@@ -64,3 +64,28 @@ state. New RPC methods and optional owner fields leave older peers compatible;
 older clients cannot create server-owned recipes. Never convert an unreachable
 worker into a cleaned or exited worker. Agent credentials remain per workspace
 and must never be included in a shared image.
+
+## Recorded Linux staging evidence
+
+On 16 October 2026, the patched v1.4.222 bundle ran as an unprivileged, isolated
+headless service on the Whiffletree controller. Production binaries and its
+profile were unchanged. Only compiled `out/main`, `out/preload`, and
+`out/renderer` were overlaid onto the official Linux release; the original
+Linux CLI and platform-native resources were retained. CLI and resource files
+remained unpacked when repacking the archive. The tested `app.asar` SHA-256 is
+`690a95ac49cd17b140b86d89ef03192f31fec3419490185d464bf517a8ddba08`.
+The executable code corresponds to `135bf259`; `808bac8b` adds reviewer tests only.
+
+Authenticated runtime RPC discovered the real recipe and dispatched
+`ephemeralVm.provisionWorkspace`. Its caller closed the socket after two seconds.
+A later connection observed the registered, adopted workspace and an identical
+request returned the same runtime/VM. A terminal created through the central
+runtime's SSH provider reported Codex, Claude Code and pi versions. Its heartbeat
+advanced from 22 to 46 between reads with no control sockets connected, preserving
+the terminal and PTY. No model request or credential transfer was involved.
+
+The first terminal connection exposed a worker image prerequisite: Linux node-pty
+requires a compiler, make and Python. Temporary packages allowed that test to
+continue; Whiffletree subsequently added those tools to its pinned Nix image.
+A test using that fresh image is required before treating worker setup as complete.
+Rendered desktop behavior and other platforms are not established by this run.
