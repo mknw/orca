@@ -1,4 +1,4 @@
-import type { ProjectRuntimeResolutionStore } from './local-project-runtime-resolution'
+import type { Store } from './persistence'
 import type { Repo } from '../shared/repo-types'
 import { gitExecFileAsync } from './git/runner'
 import { resolveDefaultBaseRefWithLocalGit } from './git/repo'
@@ -9,7 +9,7 @@ import { resolveWorktreeAddBaseRef } from '../shared/worktree/base-ref'
 const PROVISIONED_ROOT_SOURCE_REF_TIMEOUT_MS = 15_000
 
 export async function resolveProvisionedRootSource(
-  store: ProjectRuntimeResolutionStore,
+  store: Store,
   repo: Repo,
   requestedRef?: string,
   signal?: AbortSignal
