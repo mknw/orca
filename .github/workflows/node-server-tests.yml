@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(needs.changes.outputs.runners || '["ubuntu-22.04","ubuntu-24.04-arm","macos-15","macos-15-intel","windows-2022","windows-11-arm"]') }}
+        os: ${{ fromJSON(needs.changes.outputs.runners || '["windows-11-arm","windows-2022"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -195,6 +195,10 @@ jobs:
         env:
           ORCA_REUSE_PREPARED_WINDOWS_SECURITY: ${{ github.event_name == 'pull_request' && runner.os == 'Windows' && steps.dependencies.outcome == 'success' }}
       - wait: bun-orcad
+      - name: DIAG single stop-request test x3
+        shell: bash
+        run: |
+          for i in 1 2 3; do pnpm test:node-server --artifact src/main/orcad/orcad-stop-request-shutdown.integration.test.ts || echo "DIAG_SINGLE_FAIL $i"; done
       - run: pnpm test:node-server --artifact ${{ runner.os == 'Linux' && '--cross-runtime' || '' }}
         env:
           ORCA_BUN_ORCAD_SLOT: ${{ steps.bun-orcad.outputs.slot }}
@@ -304,7 +308,7 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'push' && !inputs.build_template && inputs.ref == '' }}
     # A failed smoke already blocks qualification; missing scope still selects every platform.
     if: >-
-      ${{ !cancelled() && needs.persistence.result == 'success' &&
+      ${{ !cancelled() && false &&
       needs.changes.outputs.should_run != 'false' &&
       needs.changes.outputs.qualification != 'false' }}
     strategy:
@@ -372,7 +376,7 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'push' && !inputs.build_template && inputs.ref == '' }}
     # A failed smoke already blocks qualification; missing scope still selects every platform.
     if: >-
-      ${{ !cancelled() && needs.persistence.result == 'success' &&
+      ${{ !cancelled() && false &&
       needs.changes.outputs.should_run != 'false' &&
       needs.changes.outputs.qualification != 'false' &&
       (github.event_name != 'pull_request' || inputs.build_template || inputs.ref != '' ||
@@ -429,7 +433,7 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'push' && !inputs.build_template && inputs.ref == '' }}
     # A failed smoke already blocks qualification; missing scope still selects every platform.
     if: >-
-      ${{ !cancelled() && needs.persistence.result == 'success' &&
+      ${{ !cancelled() && false &&
       needs.changes.outputs.should_run != 'false' &&
       needs.changes.outputs.qualification != 'false' }}
     strategy:
@@ -486,7 +490,7 @@ jobs:
     needs: [persistence, linux_glibc_floor, linux_glibc217_compat, linux_musl]
     if: >-
       ${{ !cancelled() && inputs.build_template &&
-      needs.persistence.result == 'success' && needs.linux_glibc_floor.result == 'success' &&
+      false && needs.linux_glibc_floor.result == 'success' &&
       needs.linux_glibc217_compat.result == 'success' && needs.linux_musl.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30

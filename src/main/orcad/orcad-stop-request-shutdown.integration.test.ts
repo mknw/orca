@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { spawnProcess } from '@orca/process-host'
+import { runProcessSync, spawnProcess } from '@orca/process-host'
 import { ORCAD_NODE_RUNTIME_MARKER_FILENAME } from '../../shared/orcad-artifacts'
 import { ORCAD_STOP_REQUEST_FILENAME } from '../../shared/orcad-stop-request'
 import {
@@ -51,16 +51,43 @@ function hostEnv(userData: string): NodeJS.ProcessEnv {
   }
 }
 
+function diag(label: string): void {
+  console.error(`[DIAG ${new Date().toISOString()}] ${label}`)
+}
+
+function diagProcesses(): void {
+  if (process.platform !== 'win32' || !root) return
+  const name = root.split(/[\\/]/).pop()
+  const r = runProcessSync({
+    program: 'powershell.exe',
+    args: ['-NoProfile', '-Command', `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${name}*' -or $_.ExecutablePath -like '*${name}*' } | ForEach-Object { '{0} {1} {2} {3}' -f $_.ProcessId,$_.ParentProcessId,$_.Name,$_.CommandLine }`],
+    timeoutMs: 30_000
+  })
+  diag(`processes under root:\n${r.stdout}${r.stderr}`)
+}
+
 afterEach(async () => {
+  diag(`hook start; children=${children.length} exitCodes=${children.map((c) => `${c.exitCode}/${c.signalCode}`).join(',')}`)
+  diagProcesses()
   for (const child of children.splice(0)) {
     await killChildAndWait(child)
   }
+  diag('killChildAndWait done')
   if (root) {
     // The terminal daemon deliberately outlives orcad; it must be gone before its profile is.
     await killProfileDaemons(join(root, 'data'))
-    await removeTestRoot(root)
+    diag('killProfileDaemons done')
+    diagProcesses()
+    try {
+      await removeTestRoot(root)
+      diag('removeTestRoot done')
+    } catch (error) {
+      diag(`removeTestRoot threw ${String(error)}`)
+      diagProcesses()
+      throw error
+    }
   }
-})
+}, 280_000)
 
 describe.skipIf(skip)('packaged orcad stop request', () => {
   it(`stops cleanly within ${ORCAD_SHUTDOWN_DEADLINE_MS} ms of its slot's stop-request file`, async () => {
@@ -80,6 +107,7 @@ describe.skipIf(skip)('packaged orcad stop request', () => {
     let stderr = ''
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString('utf8')))
     child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString('utf8')))
+    child.once('close', (c) => diag(`orcad stdio closed ${c}`))
     const exited = new Promise<number | null>((resolve) => child.once('exit', resolve))
 
     await vi.waitFor(
@@ -102,11 +130,13 @@ describe.skipIf(skip)('packaged orcad stop request', () => {
     const requestedAt = Date.now()
     writeFileSync(join(slotDir, ORCAD_STOP_REQUEST_FILENAME), '')
     const code = await exited
+    diag(`orcad exited ${code} after ${Date.now() - requestedAt}ms`)
     const elapsedMs = Date.now() - requestedAt
     expect(code, stderr.slice(-2000)).toBe(0)
     // The listener polls once a second when the watcher misses the write.
     expect(elapsedMs).toBeLessThan(ORCAD_SHUTDOWN_DEADLINE_MS)
     expect(existsSync(join(userData, ORCAD_LOCK_FILE_NAME))).toBe(false)
     expect(existsSync(join(slotDir, ORCAD_STOP_REQUEST_FILENAME))).toBe(false)
+    diag('body done')
   }, 150_000)
 })
