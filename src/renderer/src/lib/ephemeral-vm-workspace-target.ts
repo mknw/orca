@@ -13,6 +13,7 @@ import { translate } from '@/i18n/i18n'
 import { assertRuntimeEnvironmentCapability } from '@/runtime/runtime-rpc-client'
 
 export type PrepareEphemeralVmWorkspaceTargetArgs = {
+  workspaceRequest?: Record<string, unknown>
   ownerEnvironmentId?: string
   repoId: string
   recipeId: string
@@ -32,6 +33,7 @@ export type PrepareEphemeralVmWorkspaceTargetResult =
       setup: ProjectHostSetupResult
       runtimeId: string
       checkoutMode: 'orca-worktree' | 'provisioned-root'
+      ownerEnvironmentId?: string
       environmentId?: string
       expectedRefHead?: string
       stderr: string
@@ -48,6 +50,9 @@ export async function prepareEphemeralVmWorkspaceTarget(
 ): Promise<PrepareEphemeralVmWorkspaceTargetResult> {
   const provisioned = await window.api.ephemeralVm.provision({
     ...(args.ownerEnvironmentId ? { ownerEnvironmentId: args.ownerEnvironmentId } : {}),
+    ...(args.ownerEnvironmentId && args.workspaceRequest
+      ? { workspaceRequest: args.workspaceRequest }
+      : {}),
     repoId: args.repoId,
     recipeId: args.recipeId,
     projectId: args.projectId,
@@ -148,7 +153,7 @@ export async function prepareEphemeralVmWorkspaceTarget(
   } satisfies PrepareEphemeralVmWorkspaceTargetResult
 
   if (args.ownerEnvironmentId) {
-    return { ...success, environmentId: args.ownerEnvironmentId }
+    return { ...success, ownerEnvironmentId: args.ownerEnvironmentId }
   }
   return provisioned.connectionType === 'orca-server'
     ? { ...success, environmentId: provisioned.environment.id }

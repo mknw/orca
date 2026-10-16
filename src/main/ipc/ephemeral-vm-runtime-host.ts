@@ -1,4 +1,4 @@
-import type { RuntimeStore } from '../runtime/runtime-store-contract'
+import type { Store } from '../persistence'
 import { getAppEnvironment } from '../../shared/app-environment'
 import {
   listEphemeralVmRuntimes,
@@ -42,7 +42,7 @@ export type EphemeralVmCleanupCommandResult = {
 }
 
 export function createEphemeralVmRuntimeHost(
-  store: RuntimeStore,
+  store: Store,
   getUserDataPath = () => getAppEnvironment().getPath('userData')
 ) {
   return {

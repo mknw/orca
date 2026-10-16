@@ -7,11 +7,15 @@ export function createWebEphemeralVmApi(): EphemeralVmApi {
     const { ownerEnvironmentId, ...params } = args ?? {}
     const payload = method === 'listRuntimes' || method === 'listRecipeCatalog' ? undefined : params
     if (!ownerEnvironmentId) {
-      return callRuntimeResult(`ephemeralVm.${method}`, payload, timeoutMs)
+      return callRuntimeResult(
+        `ephemeralVm.${method === 'provision' && 'workspaceRequest' in params ? 'provisionWorkspace' : method}`,
+        payload,
+        timeoutMs
+      )
     }
     const response = await callEnvironmentEnvelope<T>(
       ownerEnvironmentId,
-      `ephemeralVm.${method}`,
+      `ephemeralVm.${method === 'provision' && 'workspaceRequest' in params ? 'provisionWorkspace' : method}`,
       payload,
       timeoutMs
     )
@@ -26,6 +30,7 @@ export function createWebEphemeralVmApi(): EphemeralVmApi {
     listRecipeCatalog: (args) => call('listRecipeCatalog', args),
     doctor: (args) => call('doctor', args),
     provision: (args) => call('provision', args, 30 * 60_000),
+    adoptProvisionedRoot: (args) => call('adoptProvisionedRoot', args),
     cancelProvision: (args) => call('cancelProvision', args),
     onProvisionEvent: () => noopUnsubscribe,
     listRuntimes: (args) => call('listRuntimes', args),

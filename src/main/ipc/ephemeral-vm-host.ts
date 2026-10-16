@@ -1,5 +1,7 @@
+import { adoptEphemeralVmProvisionedRoot } from './ephemeral-vm-provisioned-root-host'
+import type { EphemeralVmHost } from '../runtime/ephemeral-vm-host-registry'
 import { getAppEnvironment } from '../../shared/app-environment'
-import type { RuntimeStore } from '../runtime/runtime-store-contract'
+import type { Store } from '../persistence'
 import type { EphemeralVmApi } from '../../shared/ephemeral-vm-api'
 import {
   getEphemeralVmRecipeResultConnection,
@@ -65,15 +67,25 @@ export type EphemeralVmProvisionIpcResult =
       stdout: string
     }
 
+const hosts = new WeakMap<Store, { host: EphemeralVmHost; pluginService?: PluginService }>()
+
 export function createEphemeralVmHost(
-  store: RuntimeStore,
+  store: Store,
   pluginService?: PluginService,
   getUserDataPath: () => string = () => getAppEnvironment().getPath('userData')
-) {
+): EphemeralVmHost {
+  const existing = hosts.get(store)
+  if (existing) {
+    existing.pluginService = pluginService ?? existing.pluginService
+    return existing.host
+  }
+  const approvedPlugins = () =>
+    getApprovedPluginVmRecipes(hosts.get(store)?.pluginService ?? pluginService)
   const activeProvisionControllers = new Map<string, AbortController>()
   const listeners = new Set<Parameters<EphemeralVmApi['onProvisionEvent']>[0]>()
   const host = {
     ...createEphemeralVmRuntimeHost(store, getUserDataPath),
+    adoptProvisionedRoot: (args) => adoptEphemeralVmProvisionedRoot(store, getUserDataPath, args),
     onProvisionEvent(listener: Parameters<EphemeralVmApi['onProvisionEvent']>[0]) {
       listeners.add(listener)
       return () => {
@@ -81,11 +93,11 @@ export function createEphemeralVmHost(
       }
     },
     listRecipes: async (args: { repoId: string }) => {
-      return listRecipes(store, args.repoId, await getApprovedPluginVmRecipes(pluginService))
+      return listRecipes(store, args.repoId, await approvedPlugins())
     },
 
     listRecipeCatalog: async (): Promise<EphemeralVmRecipeCatalogEntry[]> => {
-      return listRecipeCatalog(store, await getApprovedPluginVmRecipes(pluginService))
+      return listRecipeCatalog(store, await approvedPlugins())
     },
 
     doctor: async (args: {
@@ -96,7 +108,7 @@ export function createEphemeralVmHost(
       if (!repo.ok) {
         return repo.doctor(args.recipeId)
       }
-      const pluginRecipes = await getApprovedPluginVmRecipes(pluginService)
+      const pluginRecipes = await approvedPlugins()
       return doctorEphemeralVmRecipe({
         repoPath: repo.repo.path,
         recipeId: args.recipeId,
@@ -119,11 +131,7 @@ export function createEphemeralVmHost(
       if (!repo.ok) {
         return { ok: false, error: repo.message, stdout: '', stderr: '' }
       }
-      const recipe = resolveRecipeForRepo(
-        repo.repo.path,
-        args.recipeId,
-        await getApprovedPluginVmRecipes(pluginService)
-      )
+      const recipe = resolveRecipeForRepo(repo.repo.path, args.recipeId, await approvedPlugins())
       if (!recipe) {
         return { ok: false, error: `Recipe not found: ${args.recipeId}`, stdout: '', stderr: '' }
       }
@@ -282,6 +290,7 @@ export function createEphemeralVmHost(
       return { cancelled: true }
     }
   }
+  hosts.set(store, { host, pluginService })
   return host
 }
 

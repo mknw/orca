@@ -6,6 +6,7 @@ export const ephemeralVmApi = {
   listRecipeCatalog: (args) => ipcRenderer.invoke('ephemeralVm:listRecipeCatalog', args),
   doctor: (args) => ipcRenderer.invoke('ephemeralVm:doctor', args),
   provision: (args) => ipcRenderer.invoke('ephemeralVm:provision', args),
+  adoptProvisionedRoot: (args) => ipcRenderer.invoke('ephemeralVm:adoptProvisionedRoot', args),
   cancelProvision: (args) => ipcRenderer.invoke('ephemeralVm:cancelProvision', args),
   onProvisionEvent: (callback) => {
     const listener = (

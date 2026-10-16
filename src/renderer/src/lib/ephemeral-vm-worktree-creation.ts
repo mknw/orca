@@ -47,6 +47,16 @@ export async function prepareRequestForCreate(
         : owner?.kind === 'runtime'
           ? { ownerEnvironmentId: owner.environmentId }
           : {}),
+      ...(request.ephemeralVmRecipe.checkoutMode === 'provisioned-root'
+        ? {
+            workspaceRequest: {
+              ...request,
+              repo: request.ephemeralVmRecipe.sourceRepoId,
+              createdWithAgent: request.agent,
+              comment: request.note
+            }
+          }
+        : {}),
       repoId: request.ephemeralVmRecipe.sourceRepoId,
       recipeId: request.ephemeralVmRecipe.recipeId,
       projectId:
@@ -84,6 +94,14 @@ export async function prepareRequestForCreate(
     ...(preparedTarget.checkoutMode === 'provisioned-root'
       ? { baseBranch: request.baseBranch, compareBaseRef: request.compareBaseRef }
       : getEphemeralVmPortableBaseSelection(request)),
+    ...(preparedTarget.ownerEnvironmentId
+      ? {
+          ephemeralVmRecipe: {
+            ...request.ephemeralVmRecipe,
+            ownerEnvironmentId: preparedTarget.ownerEnvironmentId
+          }
+        }
+      : {}),
     ephemeralVmRuntimeId: preparedTarget.runtimeId,
     ephemeralVmCheckoutMode: preparedTarget.checkoutMode,
     ...(preparedTarget.expectedRefHead
@@ -176,8 +194,8 @@ export async function attachEphemeralVmRuntimeToWorkspace(
   try {
     await window.api.ephemeralVm.attachWorkspace({
       runtimeId: request.ephemeralVmRuntimeId,
-      ...(request.ephemeralVmRuntimeEnvironmentId
-        ? { ownerEnvironmentId: request.ephemeralVmRuntimeEnvironmentId }
+      ...(request.ephemeralVmRecipe?.ownerEnvironmentId
+        ? { ownerEnvironmentId: request.ephemeralVmRecipe.ownerEnvironmentId }
         : {}),
       workspaceId
     })
@@ -211,8 +229,8 @@ export async function cleanupEphemeralVmRuntimeForFailedCreate(
     cleanupRuntime: (runtimeId) =>
       window.api.ephemeralVm.cleanup({
         runtimeId,
-        ...(request.ephemeralVmRuntimeEnvironmentId
-          ? { ownerEnvironmentId: request.ephemeralVmRuntimeEnvironmentId }
+        ...(request.ephemeralVmRecipe?.ownerEnvironmentId
+          ? { ownerEnvironmentId: request.ephemeralVmRecipe.ownerEnvironmentId }
           : {})
       }),
     reportSetupError: (error) =>

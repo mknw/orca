@@ -1,3 +1,4 @@
+import type { AdoptProvisionedRootArgs, CreateWorktreeResult } from './worktree/create-types'
 import type { OrcaHooks } from './orca-yaml-hook-types'
 import type { PublicKnownRuntimeEnvironment } from './runtime-environments'
 import type { EphemeralVmRecipeDoctorResult } from './ephemeral-vm-recipes'
@@ -31,6 +32,7 @@ export type EphemeralVmApi = {
     ownerEnvironmentId?: string
     repoId: string
     recipeId: string
+    workspaceRequest?: Record<string, unknown>
     workspaceName?: string
     projectId?: string
     workspaceId?: string
@@ -59,6 +61,9 @@ export type EphemeralVmApi = {
       }
     | { ok: false; error: string; stderr: string; stdout: string }
   >
+  adoptProvisionedRoot: (
+    args: AdoptProvisionedRootArgs & EphemeralVmOwner
+  ) => Promise<CreateWorktreeResult>
   cancelProvision: (
     args: { provisionId: string } & EphemeralVmOwner
   ) => Promise<{ cancelled: boolean }>

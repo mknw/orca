@@ -15,11 +15,24 @@ export function registerEphemeralVmHandlers(store: Store, pluginService?: Plugin
     if (!args?.ownerEnvironmentId) {
       return local()
     }
+    // A legacy local recipe may own a workspace running on its paired guest.
+    if ((method === 'resumeWorkspace' || method === 'suspendWorkspace') && 'workspaceId' in args) {
+      const runtimes = await host.listRuntimes()
+      if (
+        runtimes.some(
+          (entry) =>
+            entry.workspaceId === args.workspaceId &&
+            entry.runtimeEnvironmentId === args.ownerEnvironmentId
+        )
+      ) {
+        return local()
+      }
+    }
     const { ownerEnvironmentId, ...params } = args
     const response = await callRuntimeEnvironment(
       app.getPath('userData'),
       ownerEnvironmentId,
-      `ephemeralVm.${method}`,
+      `ephemeralVm.${method === 'provision' && 'workspaceRequest' in params ? 'provisionWorkspace' : method}`,
       method === 'listRuntimes' || method === 'listRecipeCatalog' ? undefined : params,
       method === 'provision' ? 30 * 60_000 : 60_000
     )
@@ -64,6 +77,9 @@ export function registerEphemeralVmHandlers(store: Store, pluginService?: Plugin
       unsubscribe()
     }
   })
+  ipcMain.handle('ephemeralVm:adoptProvisionedRoot', (_event, args) =>
+    route('adoptProvisionedRoot', args, () => host.adoptProvisionedRoot(args))
+  )
   ipcMain.handle('ephemeralVm:cancelProvision', (_event, args) =>
     route('cancelProvision', args, () => host.cancelProvision(args))
   )

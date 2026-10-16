@@ -20,7 +20,7 @@ vi.mock('./ephemeral-vm-host', () => ({
     doctor: local,
     provision: local,
     cancelProvision: local,
-    listRuntimes: local,
+    listRuntimes: vi.fn(() => []),
     attachWorkspace: local,
     cleanup: local,
     stopCleanup: local,

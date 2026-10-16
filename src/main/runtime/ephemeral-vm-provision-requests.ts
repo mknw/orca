@@ -13,13 +13,16 @@ const recordSchema = z
     result: z.unknown().optional()
   })
   .strict()
-const active = new Map<string, { hash: string; promise: Promise<unknown> }>()
+const active = new Map<
+  string,
+  { hash: string; promise: Promise<unknown>; controller: AbortController }
+>()
 
 /** A lost client may retry; an interrupted host must never blindly create another VM. */
 export async function runEphemeralVmProvisionRequest(
   userDataPath: string,
   args: { provisionId: string },
-  run: () => Promise<unknown>
+  run: (signal: AbortSignal) => Promise<unknown>
 ): Promise<unknown> {
   const directory = join(userDataPath, 'ephemeral-vm-provision-requests')
   mkdirSync(directory, { recursive: true, mode: 0o700 })
@@ -55,8 +58,9 @@ export async function runEphemeralVmProvisionRequest(
   writeSecureJsonFileWithinLimit(path, { hash, state: 'pending' }, MAX_REQUEST_BYTES, {
     durable: true
   })
+  const controller = new AbortController()
   const promise = Promise.resolve()
-    .then(run)
+    .then(() => run(controller.signal))
     .then((result) => {
       writeSecureJsonFileWithinLimit(path, { hash, state: 'settled', result }, MAX_REQUEST_BYTES, {
         durable: true
@@ -64,6 +68,19 @@ export async function runEphemeralVmProvisionRequest(
       return result
     })
     .finally(() => active.delete(path))
-  active.set(path, { hash, promise })
+  active.set(path, { hash, promise, controller })
   return promise
+}
+
+export function cancelEphemeralVmProvisionRequest(
+  userDataPath: string,
+  provisionId: string
+): boolean {
+  const key = createHash('sha256').update(provisionId).digest('hex')
+  const entry = active.get(join(userDataPath, 'ephemeral-vm-provision-requests', `${key}.json`))
+  if (!entry) {
+    return false
+  }
+  entry.controller.abort()
+  return true
 }
