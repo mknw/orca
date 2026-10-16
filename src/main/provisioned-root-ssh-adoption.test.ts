@@ -456,6 +456,7 @@ function makeStore(): {
     ...updates
   }))
   return {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture implements only the persistence methods used by adoption.
     store: {
       getWorktreeMeta: vi.fn(),
       getSettings: () => ({ nestWorkspaces: false, workspaceDir: '.orca/worktrees' }),

@@ -1,6 +1,6 @@
 # Server-owned workspace recipes
 
-This patch targets Orca v1.4.222 (`fae770adf60aac8f0af02720565c1691fdd95dec`),
+This patch targets Orca v1.4.222 (commit `4bb6f2072b07c1f0664b809551f77754700570e4`),
 the version installed on the Whiffletree controller. Its SSH providers already
 support a central runtime owning a worker's files, terminals, and agents.
 Newer upstream code requires a managed Orca runtime on every SSH target; that
@@ -16,7 +16,10 @@ The IPC adapter and authenticated runtime RPC use the same host implementation.
 Headless `orca serve` registers SSH providers and recipe services before its RPC
 listener starts. Recipe output still describes SSH connection information; the
 central host connects and registers the worker checkout through its existing
-SSH project setup path. The client projects those rows as owned by the central
+SSH project setup path. For provisioned-root recipes, `ephemeralVm.provisionWorkspace`
+registers and adopts the checkout on the server before replying. The client
+repeats those existing steps idempotently to populate its UI state. A caller
+disconnecting during any server-owned phase does not abort that work. The client projects those rows as owned by the central
 runtime, preserving the nested SSH connection id. No laptop SSH bridge is used.
 
 ## Required behavior
