@@ -1,3 +1,4 @@
+import { toRuntimeExecutionHostId } from '../../../../shared/execution-host'
 import type { StateCreator } from 'zustand'
 import { toast } from 'sonner'
 import type { AppState } from '../types'
@@ -37,7 +38,11 @@ export function createProjectHostSetupActions(
   return {
     setupProjectExistingFolder: async (args) => {
       try {
-        const target = getProjectSetupRuntimeTarget(args.hostId)
+        const target = getProjectSetupRuntimeTarget(
+          args.runtimeOwnerEnvironmentId
+            ? toRuntimeExecutionHostId(args.runtimeOwnerEnvironmentId)
+            : args.hostId
+        )
         await assertProjectHostSetupMutationRuntimeCapabilities(target)
         const projectProviderIdentity =
           args.projectProviderIdentity ??

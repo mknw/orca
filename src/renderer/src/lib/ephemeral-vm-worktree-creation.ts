@@ -1,3 +1,4 @@
+import { getRepoExecutionHostId, parseExecutionHostId } from '../../../shared/execution-host'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { prepareEphemeralVmWorkspaceTarget } from '@/lib/ephemeral-vm-workspace-target'
@@ -39,7 +40,13 @@ export async function prepareRequestForCreate(
     const sourceRepo = store.repos.find(
       (repo) => repo.id === request.ephemeralVmRecipe?.sourceRepoId
     )
+    const owner = sourceRepo ? parseExecutionHostId(getRepoExecutionHostId(sourceRepo)) : null
     preparedTarget = await prepareEphemeralVmWorkspaceTarget({
+      ...(request.ephemeralVmRecipe.ownerEnvironmentId
+        ? { ownerEnvironmentId: request.ephemeralVmRecipe.ownerEnvironmentId }
+        : owner?.kind === 'runtime'
+          ? { ownerEnvironmentId: owner.environmentId }
+          : {}),
       repoId: request.ephemeralVmRecipe.sourceRepoId,
       recipeId: request.ephemeralVmRecipe.recipeId,
       projectId:
@@ -169,6 +176,9 @@ export async function attachEphemeralVmRuntimeToWorkspace(
   try {
     await window.api.ephemeralVm.attachWorkspace({
       runtimeId: request.ephemeralVmRuntimeId,
+      ...(request.ephemeralVmRuntimeEnvironmentId
+        ? { ownerEnvironmentId: request.ephemeralVmRuntimeEnvironmentId }
+        : {}),
       workspaceId
     })
     if (request.ephemeralVmRuntimeEnvironmentId) {
@@ -198,7 +208,13 @@ export async function cleanupEphemeralVmRuntimeForFailedCreate(
 ): Promise<void> {
   await cleanupFailedEphemeralVmWorkspace(request, {
     deleteProjectHostSetup: (setupId) => useAppStore.getState().deleteProjectHostSetup({ setupId }),
-    cleanupRuntime: (runtimeId) => window.api.ephemeralVm.cleanup({ runtimeId }),
+    cleanupRuntime: (runtimeId) =>
+      window.api.ephemeralVm.cleanup({
+        runtimeId,
+        ...(request.ephemeralVmRuntimeEnvironmentId
+          ? { ownerEnvironmentId: request.ephemeralVmRuntimeEnvironmentId }
+          : {})
+      }),
     reportSetupError: (error) =>
       console.error('Failed to remove provisioned-root project setup:', error),
     reportRuntimeError: (error) =>

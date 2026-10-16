@@ -26,7 +26,7 @@ export type LocalProjectGhExecOptions = LocalProjectWorktreeGitOptions & {
 }
 
 export function getLocalProjectGitExecOptions(
-  store: Store,
+  store: ProjectRuntimeResolutionStore,
   repo: Repo
 ): LocalProjectGitExecOptions {
   // Why: local git must run in the same resolved project runtime as agents,

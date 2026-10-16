@@ -1,3 +1,5 @@
+import { hasEphemeralVmHost } from './ephemeral-vm-host-registry'
+import { EPHEMERAL_VM_HOST_RUNTIME_CAPABILITY } from '../../shared/ephemeral-vm-host-capability'
 import { OrcaRuntimeWithGetRuntimeId } from './orca-runtime-get-runtime-id'
 import type { RuntimeDegradation, RuntimeStatus } from '../../shared/runtime-types'
 import {
@@ -81,6 +83,7 @@ export class OrcaRuntimeWithGetStatus extends OrcaRuntimeWithGetRuntimeId {
       process.platform === 'win32' && isWindowsProcessStartTimeAvailable()
     const capabilities: RuntimeCapability[] = RUNTIME_CAPABILITIES.filter(
       (capability) =>
+        (capability !== EPHEMERAL_VM_HOST_RUNTIME_CAPABILITY || hasEphemeralVmHost()) &&
         (capability !== 'browser.screencast.v1' || canBrowse) &&
         // Why: the nested-runtime E2E needs a real legacy transport without maintaining an old binary fixture.
         (process.env.ORCA_E2E_DISABLE_RUNTIME_SHARED_CONTROL !== '1' ||
